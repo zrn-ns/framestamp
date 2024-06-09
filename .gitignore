@@ -1,0 +1,5 @@
+!output/
+output/*
+!input/
+input/*
+.DS_Store

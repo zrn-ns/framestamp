@@ -1,0 +1,87 @@
+#!/bin/bash
+
+set -eu
+cd `dirname $0`
+
+# デフォルトの入力と出力ディレクトリ
+input_dir="input"
+output_dir="output"
+
+# 引数の解析
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        -input)
+            input_dir="$2"
+            shift 2
+            ;;
+        -output)
+            output_dir="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# ディレクトリが存在しない場合は作成
+mkdir -p "$output_dir"
+
+# 画像の処理関数
+process_image() {
+    input_image="$1"
+    filename=$(basename -- "${input_image}")
+    filename_noext="${filename%.*}"
+    temp_image="temp_${filename_noext}.jpg"
+    output_image="$2/${filename_noext}.jpg"
+
+    # 出力ファイルがすでに存在する場合はスキップ
+    if [ -e "${output_image}" ]; then
+        echo "[INFO] Skipping $output_image, already exists."
+        return
+    fi
+
+    # Exif情報を取得
+    model=$(exiftool -Model -s -S -s "$input_image")
+    date=$(exiftool -DateTimeOriginal -s -S -s -d "%Y.%m.%d %H:%M" "$input_image")
+    aperture=$(exiftool -FNumber -s -S -s "$input_image")
+    shutter_speed=$(exiftool -ExposureTime -s -S -s -d "%0.1fs" "$input_image")
+    iso=$(exiftool -ISO -s -S -s "$input_image")
+    focal_length=$(exiftool -FocalLength -s -S -s "$input_image" | sed 's/ mm//')
+    focal_35mm_length=$(exiftool -FocalLengthIn35mmFormat -s -S -s "$input_image" | sed 's/ mm//')
+    lens_model=$(exiftool -LensModel -s -S -s "$input_image")
+
+    # 画像を回転
+    convert "$input_image" -auto-orient -resize x4000 ${temp_image}
+
+    # 画像のサイズを取得
+    width=$(identify -format "%w" ${temp_image})
+    height=$(identify -format "%h" ${temp_image})
+
+    # 上下左右に余白を追加し、ウォーターマークを挿入
+    convert ${temp_image} \
+        -background white \
+        -gravity north \
+            -extent ${width}x$((height + 700)) \
+        -gravity south \
+            -extent $((width + 300))x$((height + 700 + 150)) \
+        -gravity south \
+            -fill black \
+            -pointsize 160 -font "Helvetica-Bold" -annotate +0+420 "$model" \
+            -pointsize  80 -font "Helvetica-Bold" -annotate +0+240 "${lens_model:--}" \
+            -pointsize  80 -font "Helvetica" -annotate +0+140 "$date • f/$aperture • SS$shutter_speed • ISO$iso • ${focal_length}mm (eqv35mm: ${focal_35mm_length:--}mm)" \
+        -layers flatten "$output_image"
+
+    # 一時ファイルの削除
+    rm -f ${temp_image}
+
+    echo "[INFO] Finished processing: ${input_image}"
+}
+
+export -f process_image
+
+# GNU Parallelで並列処理
+find "$input_dir" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tiff" \) | parallel process_image {} "$output_dir"
+
