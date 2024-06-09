@@ -69,9 +69,10 @@ process_image() {
             -extent $((width + 300))x$((height + 700 + 150)) \
         -gravity south \
             -fill black \
-            -pointsize 160 -font "Helvetica-Bold" -annotate +0+420 "$model" \
-            -pointsize  80 -font "Helvetica-Bold" -annotate +0+240 "${lens_model:--}" \
-            -pointsize  80 -font "Helvetica" -annotate +0+140 "$date • f/$aperture • SS$shutter_speed • ISO$iso • ${focal_length}mm (eqv35mm: ${focal_35mm_length:--}mm)" \
+                -pointsize 160 -font "Helvetica-Bold" -annotate +0+420 "$model" \
+            -fill "#777777" \
+                -pointsize  80 -font "Helvetica-Bold" -annotate +0+240 "${lens_model:--}" \
+                -pointsize  80 -font "Helvetica" -annotate +0+140 "$date • f/$aperture • SS$shutter_speed • ISO$iso • ${focal_length}mm (eqv35mm: ${focal_35mm_length:--}mm)" \
         -layers flatten "$output_image"
 
     # 一時ファイルの削除
