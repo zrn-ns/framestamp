@@ -1,6 +1,6 @@
 # FrameStamp
 
-A script that adds borders to photos and displays information about the camera and lens used for shooting.
+A script that adds borders to photos and displays EXIF information.
 
 This script is inspired by [Sukashi App](https://play.google.com/store/apps/details?id=app.sukashi&hl=ja).
 
