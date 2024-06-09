@@ -7,6 +7,9 @@ cd `dirname $0`
 input_dir="input"
 output_dir="output"
 
+# デフォルトのテーマ(white/black)
+theme="white"
+
 # 引数の解析
 while [[ $# -gt 0 ]]; do
     key="$1"
@@ -17,6 +20,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -output)
             output_dir="$2"
+            shift 2
+            ;;
+        -theme)
+            theme="$2"
             shift 2
             ;;
         *)
@@ -32,10 +39,33 @@ mkdir -p "$output_dir"
 # 画像の処理関数
 process_image() {
     input_image="$1"
+    output_dir="$2"
+    theme="$3"
     filename=$(basename -- "${input_image}")
     filename_noext="${filename%.*}"
     temp_image="temp_${filename_noext}.jpg"
-    output_image="$2/${filename_noext}.jpg"
+    output_image="${output_dir}/${filename_noext}.jpg"
+
+    bg_color=""
+    strong_font_color=""
+    weak_font_color=""
+    
+    case "$theme" in
+        white)
+            bg_color="#fff"
+            strong_font_color="#111"
+            weak_font_color="#777"
+            ;;
+        black)
+            bg_color="#000"
+            strong_font_color="#ccc"
+            weak_font_color="#999"
+            ;;
+        *)
+            echo "Invalid theme: $theme"
+            exit 1
+            ;;
+    esac
 
     # 出力ファイルがすでに存在する場合はスキップ
     if [ -e "${output_image}" ]; then
@@ -62,15 +92,15 @@ process_image() {
 
     # 上下左右に余白を追加し、ウォーターマークを挿入
     convert ${temp_image} \
-        -background white \
+        -background "$bg_color" \
         -gravity north \
             -extent ${width}x$((height + 700)) \
         -gravity south \
             -extent $((width + 300))x$((height + 700 + 150)) \
         -gravity south \
-            -fill black \
+            -fill "$strong_font_color" \
                 -pointsize 160 -font "Helvetica-Bold" -annotate +0+420 "$model" \
-            -fill "#777777" \
+            -fill $weak_font_color \
                 -pointsize  80 -font "Helvetica-Bold" -annotate +0+240 "${lens_model:--}" \
                 -pointsize  80 -font "Helvetica" -annotate +0+140 "$date • f/$aperture • SS$shutter_speed • ISO$iso • ${focal_length}mm (eqv35mm: ${focal_35mm_length:--}mm)" \
         -layers flatten "$output_image"
@@ -84,5 +114,5 @@ process_image() {
 export -f process_image
 
 # GNU Parallelで並列処理
-find "$input_dir" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tiff" \) | parallel process_image {} "$output_dir"
+find "$input_dir" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.tiff" \) | parallel process_image {} "$output_dir" "$theme"
 
